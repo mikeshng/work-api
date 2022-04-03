@@ -2,7 +2,6 @@ name: CI Workflow
 on:
   # Run this workflow every time a new commit pushed to upstream/fork repository.
   # Run workflow on fork repository will help contributors find and resolve issues before sending a PR.
-  push:
   pull_request:
 defaults:
   run:
@@ -13,77 +12,14 @@ jobs:
     name: lint
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/setup-go@v2
       - uses: actions/checkout@v2
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v2
         with:
           # the version of golangci-lint.
-          version: v1.32.2
+          version: v1.45.2
 
           # show only new issues if it's a pull request.
           only-new-issues: false
           args: --timeout 3m0s
-  verify:
-    name: verify
-    runs-on: ubuntu-latest
-    steps:
-      - name: checkout code
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 1
-          path: go/src/sigs.k8s.io/work-api
-      - name: install Go
-        uses: actions/setup-go@v2
-        with:
-          go-version: 1.16.x
-      - name: verify
-        run: hack/verify-all.sh -v
-        env:
-          GOPATH: '/home/runner/work/work-api/work-api/go'
-  test:
-    name: unit test
-    needs: verify
-    runs-on: ubuntu-latest
-    steps:
-      - name: checkout code
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 1
-          path: go/src/sigs.k8s.io/work-api
-      - name: install Go
-        uses: actions/setup-go@v2
-        with:
-          go-version: 1.16.x
-      - name: make test
-        run: make test
-        env:
-          GOPATH: '/home/runner/work/work-api/work-api/go'
-  e2e:
-    name: e2e
-    runs-on: ubuntu-latest
-    steps:
-      - name: checkout code
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 1
-          path: go/src/sigs.k8s.io/work-api
-      - name: install Go
-        uses: actions/setup-go@v2
-        with:
-          go-version: 1.16.x
-      - name: images
-        run: make docker-build
-        env:
-          GOPATH: '/home/runner/work/work-api/work-api/go'
-      - name: setup kind
-        uses: engineerd/setup-kind@v0.5.0
-        with:
-          version: v0.11.1
-      - name: Load image on the nodes of the cluster
-        run: |
-          kind load docker-image --name=kind work-api-controller:latest
-      - name: Run e2e test
-        run: |
-          make test-e2e
-        env:
-          KUBECONFIG: /home/runner/.kube/config
