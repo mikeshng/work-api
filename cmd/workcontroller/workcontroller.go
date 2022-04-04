@@ -19,6 +19,7 @@ package main
 import (
 	"flag"
 	"os"
+	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -29,6 +30,8 @@ import (
 	"sigs.k8s.io/work-api/pkg/apis/v1alpha1"
 	"sigs.k8s.io/work-api/pkg/controllers"
 )
+
+const defaultStatusSyncInterval = 30 * time.Second
 
 var (
 	scheme   = runtime.NewScheme()
@@ -45,6 +48,7 @@ func main() {
 	var enableLeaderElection bool
 	var hubkubeconfig string
 	var workNamespace string
+	var statusSyncInterval time.Duration
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
 		"Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
@@ -52,6 +56,8 @@ func main() {
 		"Paths to a kubeconfig connect to hub.")
 	flag.StringVar(&workNamespace, "work-namespace", "",
 		"Namespace to watch for work.")
+	flag.DurationVar(&statusSyncInterval, "status-sync-interval",
+		defaultStatusSyncInterval, "Interval to sync resource status to hub.")
 	flag.Parse()
 	opts := ctrl.Options{
 		Scheme:             scheme,
@@ -68,7 +74,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := controllers.Start(ctrl.SetupSignalHandler(), hubConfig, ctrl.GetConfigOrDie(), setupLog, opts); err != nil {
+	if err := controllers.Start(ctrl.SetupSignalHandler(), hubConfig, ctrl.GetConfigOrDie(),
+		statusSyncInterval, setupLog, opts); err != nil {
 		setupLog.Error(err, "problem running controllers")
 		os.Exit(1)
 	}

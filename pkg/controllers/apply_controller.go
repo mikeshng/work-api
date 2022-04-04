@@ -54,6 +54,8 @@ type applyResult struct {
 
 // Reconcile implement the control loop logic for Work object.
 func (r *ApplyWorkReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	r.log.Info("reconciling work: " + req.Name)
+
 	work := &workv1alpha1.Work{}
 	err := r.client.Get(ctx, req.NamespacedName, work)
 	switch {
@@ -66,6 +68,10 @@ func (r *ApplyWorkReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	// do nothing if the finalizer is not present
 	// it ensures all maintained resources will be cleaned once work is deleted
 	if !controllerutil.ContainsFinalizer(work, workFinalizer) {
+		return ctrl.Result{}, nil
+	}
+
+	if len(work.Status.ManifestConditions) > 0 { // TODO remove bad hack!
 		return ctrl.Result{}, nil
 	}
 
@@ -116,7 +122,7 @@ func (r *ApplyWorkReconciler) applyManifests(manifests []workv1alpha1.Manifest, 
 		result := applyResult{
 			identifier: workv1alpha1.ResourceIdentifier{Ordinal: index},
 		}
-		gvr, required, err := r.decodeUnstructured(manifest)
+		gvr, required, err := decodeUnstructured(manifest, r.restMapper)
 		if err != nil {
 			result.err = err
 		} else {
@@ -131,20 +137,6 @@ func (r *ApplyWorkReconciler) applyManifests(manifests []workv1alpha1.Manifest, 
 		results = append(results, result)
 	}
 	return results
-}
-
-func (r *ApplyWorkReconciler) decodeUnstructured(manifest workv1alpha1.Manifest) (schema.GroupVersionResource, *unstructured.Unstructured, error) {
-	unstructuredObj := &unstructured.Unstructured{}
-	err := unstructuredObj.UnmarshalJSON(manifest.Raw)
-	if err != nil {
-		return schema.GroupVersionResource{}, nil, fmt.Errorf("Failed to decode object: %w", err)
-	}
-	mapping, err := r.restMapper.RESTMapping(unstructuredObj.GroupVersionKind().GroupKind(), unstructuredObj.GroupVersionKind().Version)
-	if err != nil {
-		return schema.GroupVersionResource{}, nil, fmt.Errorf("Failed to find gvr from restmapping: %w", err)
-	}
-
-	return mapping.Resource, unstructuredObj, nil
 }
 
 func (r *ApplyWorkReconciler) applyUnstructrued(

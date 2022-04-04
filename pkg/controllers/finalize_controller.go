@@ -40,6 +40,8 @@ type FinalizeWorkReconciler struct {
 
 // Reconcile implement the control loop logic for finalizing Work object.
 func (r *FinalizeWorkReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	r.log.Info("reconciling work for finalizer: " + req.Name)
+
 	work := &workv1alpha1.Work{}
 	err := r.client.Get(ctx, types.NamespacedName{Name: req.Name, Namespace: req.Namespace}, work)
 	switch {
