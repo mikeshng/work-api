@@ -39,6 +39,65 @@ type Manifest struct {
 	// +kubebuilder:validation:EmbeddedResource
 	// +kubebuilder:pruning:PreserveUnknownFields
 	runtime.RawExtension `json:",inline"`
+
+	// StatusFeedbackRules defines the resource status fields should be returned.
+	// +optional
+	StatusFeedbackRules []StatusFeedbackRule `json:"statusFeedbackRules"`
+}
+
+// StatusFeedbackRule represents a resource status field should be returned.
+type StatusFeedbackRule struct {
+	// Type defines the option of how status can be returned.
+	// It can be JSONPaths or CommonFields.
+	// If the type is JSONPaths, user should specify the jsonPaths field
+	// If the type is CommonFields, certain common fields of status defined by a rule only
+	// for types in in k8s.io/api will be reported,
+	// If these status fields do not exist, no values will be reported.
+	// +kubebuilder:validation:Required
+	// +required
+	Type FeedBackType `json:"type"`
+
+	// JsonPaths defines the json path under status field to be synced.
+	// +optional
+	JsonPaths []JsonPath `json:"jsonPaths,omitempty"`
+}
+
+// FeedBackType represents the option of how status can be returned.
+// +kubebuilder:validation:Enum=CommonFields;JSONPaths
+type FeedBackType string
+
+const (
+	// CommonFieldsType represents that values of some common status fields will be returned, which
+	// is reflected with a hardcoded rule only for types in k8s.io/api.
+	CommonFieldsType FeedBackType = "CommonFields"
+
+	// JSONPathsType represents that values of status fields with certain json paths specified will be
+	// returned
+	JSONPathsType FeedBackType = "JSONPaths"
+)
+
+// JsonPath represents a status field to be synced for a manifest using json path.
+type JsonPath struct {
+	// Name represents the alias name for this field
+	// +kubebuilder:validation:Required
+	// +required
+	Name string `json:"name"`
+
+	// Version is the version of the Kubernetes resource.
+	// If it is not specified, the resource with the semantically latest version is
+	// used to resolve the path.
+	// +optional
+	Version string `json:"version,omitempty"`
+
+	// Path represents the json path of the field under status.
+	// The path must point to a field with single value in the type of integer, bool or string.
+	// If the path points to a non-existing field, no value will be returned.
+	// If the path points to a structure, map or slice, no value will be returned and the status conddition
+	// of 'StatusFeedBackSynced' will be set as false.
+	// Ref to https://kubernetes.io/docs/reference/kubectl/jsonpath/ on how to write a jsonPath.
+	// +kubebuilder:validation:Required
+	// +required
+	Path string `json:"path"`
 }
 
 // WorkStatus defines the observed state of Work
@@ -94,7 +153,66 @@ type ManifestCondition struct {
 	// Conditions represents the conditions of this resource on spoke cluster
 	// +required
 	Conditions []metav1.Condition `json:"conditions"`
+
+	// StatusFeedbacks represents the values of the field synced back defined in statusFeedbackRules
+	// +optional
+	StatusFeedbacks StatusFeedbackResult `json:"statusFeedback,omitempty"`
 }
+
+// StatusFeedbackResult represents the values of the field synced back defined in statusFeedbackRules
+type StatusFeedbackResult struct {
+	// Values represents the synced value of the interested field.
+	// +listType:=map
+	// +listMapKey:=name
+	// +optional
+	Values []FeedbackValue `json:"values,omitempty"`
+}
+
+// FeedbackValue represents the synced value of the feedback field.
+type FeedbackValue struct {
+	// Name represents the alias name for this field. It is the same as what is specified
+	// in StatusFeedbackRule in the spec.
+	// +kubebuilder:validation:Required
+	// +required
+	Name string `json:"name"`
+
+	// Value is the value of the status field.
+	// The value of the status field can only be integer, string or boolean.
+	// +kubebuilder:validation:Required
+	// +required
+	Value FieldValue `json:"fieldValue"`
+}
+
+// FieldValues represents the value of the field
+// The value of the status field can only be integer, string or boolean.
+type FieldValue struct {
+	// Type represents the type of the value, it can be integer, string or boolean.
+	// +kubebuilder:validation:Required
+	// +required
+	Type ValueType `json:"type"`
+
+	// Integer is the integer value when type is integer.
+	// +optional
+	Integer *int64 `json:"integer,omitempty"`
+
+	// String is the string value when when type is string.
+	// +optional
+	String *string `json:"string,omitempty"`
+
+	// Boolean is bool value when type is boolean.
+	// +optional
+	Boolean *bool `json:"boolean,omitempty"`
+}
+
+// Type represents the type of the value, it can by integer, string or bool
+// +kubebuilder:validation:Enum=Integer;String;Boolean
+type ValueType string
+
+const (
+	Integer ValueType = "Integer"
+	String  ValueType = "String"
+	Boolean ValueType = "Boolean"
+)
 
 // +genclient
 // +kubebuilder:object:root=true

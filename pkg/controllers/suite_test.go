@@ -21,6 +21,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -80,7 +81,8 @@ var _ = BeforeSuite(func(done Done) {
 	Expect(err).NotTo(HaveOccurred())
 
 	go func() {
-		if err := Start(ctrl.SetupSignalHandler(), cfg, cfg, setupLog, opts); err != nil {
+		if err := Start(ctrl.SetupSignalHandler(), cfg, cfg,
+			30*time.Second, setupLog, opts); err != nil {
 			setupLog.Error(err, "problem running controllers")
 			os.Exit(1)
 		}

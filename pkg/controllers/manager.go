@@ -19,12 +19,14 @@ package controllers
 import (
 	"context"
 	"os"
+	"time"
 
 	"github.com/go-logr/logr"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
+	"sigs.k8s.io/work-api/pkg/statusfeedback"
 )
 
 const (
@@ -33,7 +35,8 @@ const (
 )
 
 // Start the controllers with the supplied config
-func Start(ctx context.Context, hubCfg, spokeCfg *rest.Config, setupLog logr.Logger, opts ctrl.Options) error {
+func Start(ctx context.Context, hubCfg, spokeCfg *rest.Config, statusSyncInterval time.Duration,
+	setupLog logr.Logger, opts ctrl.Options) error {
 	mgr, err := ctrl.NewManager(hubCfg, opts)
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
@@ -69,6 +72,18 @@ func Start(ctx context.Context, hubCfg, spokeCfg *rest.Config, setupLog logr.Log
 		log:                ctrl.Log.WithName("controllers").WithName("WorkFinalize"),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "WorkFinalize")
+		return err
+	}
+
+	if err = (&StatusFeedbackReconciler{
+		client:             mgr.GetClient(),
+		spokeDynamicClient: spokeDynamicClient,
+		restMapper:         restMapper,
+		log:                ctrl.Log.WithName("controllers").WithName("StatusFeedback"),
+		statusSyncInterval: statusSyncInterval,
+		statusReader:       statusfeedback.NewStatusReader(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "StatusFeedback")
 		return err
 	}
 

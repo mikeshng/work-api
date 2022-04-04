@@ -116,7 +116,7 @@ func (r *ApplyWorkReconciler) applyManifests(manifests []workv1alpha1.Manifest, 
 		result := applyResult{
 			identifier: workv1alpha1.ResourceIdentifier{Ordinal: index},
 		}
-		gvr, required, err := r.decodeUnstructured(manifest)
+		gvr, required, err := decodeUnstructured(manifest, r.restMapper)
 		if err != nil {
 			result.err = err
 		} else {
@@ -131,20 +131,6 @@ func (r *ApplyWorkReconciler) applyManifests(manifests []workv1alpha1.Manifest, 
 		results = append(results, result)
 	}
 	return results
-}
-
-func (r *ApplyWorkReconciler) decodeUnstructured(manifest workv1alpha1.Manifest) (schema.GroupVersionResource, *unstructured.Unstructured, error) {
-	unstructuredObj := &unstructured.Unstructured{}
-	err := unstructuredObj.UnmarshalJSON(manifest.Raw)
-	if err != nil {
-		return schema.GroupVersionResource{}, nil, fmt.Errorf("Failed to decode object: %w", err)
-	}
-	mapping, err := r.restMapper.RESTMapping(unstructuredObj.GroupVersionKind().GroupKind(), unstructuredObj.GroupVersionKind().Version)
-	if err != nil {
-		return schema.GroupVersionResource{}, nil, fmt.Errorf("Failed to find gvr from restmapping: %w", err)
-	}
-
-	return mapping.Resource, unstructuredObj, nil
 }
 
 func (r *ApplyWorkReconciler) applyUnstructrued(
