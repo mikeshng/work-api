@@ -25,10 +25,6 @@ import (
 type WorkSpec struct {
 	// Workload represents the manifest workload to be deployed on spoke cluster
 	Workload WorkloadTemplate `json:"workload,omitempty"`
-
-	// WorkloadConfig represents the configuration of workload defined in workload field.
-	// +optional
-	WorkloadConfig WorkloadConfiguration `json:"workloadConfig,omitempty"`
 }
 
 // WorkloadTemplate represents the manifest workload to be deployed on spoke cluster
@@ -43,83 +39,6 @@ type Manifest struct {
 	// +kubebuilder:validation:EmbeddedResource
 	// +kubebuilder:pruning:PreserveUnknownFields
 	runtime.RawExtension `json:",inline"`
-}
-
-// WorkloadConfiguration represents the the configuration of workload defined in workload field.
-type WorkloadConfiguration struct {
-	// ManifestConfigs represents the configuration of manifest defined in workload field.
-	// +optional
-	ManifestConfigs []ManifestConfigOption `json:"manifestConfigs,omitempty"`
-}
-
-// ManifestConfigOption represents the configuration of a manifest defined in workload field.
-type ManifestConfigOption struct {
-	// ResourceIdentifier represents the group, resource, name and namespace of a resoure.
-	// If this references a resource not created by this work,
-	// then the related configurations will not be applied.
-	// +kubebuilder:validation:Required
-	// +required
-	ResourceIdentifier ResourceIdentifier `json:"resourceIdentifier"`
-
-	// StatusSyncRules defines what resource status field should be returned.
-	// +kubebuilder:validation:Required
-	// +required
-	StatusSyncRules []StatusSyncRule `json:"statusSyncRules"`
-}
-
-// StatusSyncRule represents a resource status field should be returned.
-type StatusSyncRule struct {
-	// Type defines the option of how status can be returned.
-	// It can be JSONPaths or CommonFields.
-	// If the type is JSONPaths, user should specify the jsonPaths field
-	// If the type is CommonFields, certain common fields of status defined by a rule only
-	// for types in in k8s.io/api will be reported,
-	// If these status fields do not exist, no values will be reported.
-	// +kubebuilder:validation:Required
-	// +required
-	Type SyncType `json:"type"`
-
-	// JsonPaths defines the json path under status field to be synced.
-	// +optional
-	JsonPaths []JsonPath `json:"jsonPaths,omitempty"`
-}
-
-// SyncType represents the option of how status can be returned.
-// +kubebuilder:validation:Enum=CommonFields;JSONPaths
-type SyncType string
-
-const (
-	// CommonFieldsType represents that values of some common status fields will be returned, which
-	// is reflected with a hardcoded rule only for types in k8s.io/api.
-	CommonFieldsType SyncType = "CommonFields"
-
-	// JSONPathsType represents that values of status fields with certain json paths specified will be
-	// returned
-	JSONPathsType SyncType = "JSONPaths"
-)
-
-// JsonPath represents a status field to be synced for a manifest using json path.
-type JsonPath struct {
-	// Name represents the alias name for this field
-	// +kubebuilder:validation:Required
-	// +required
-	Name string `json:"name"`
-
-	// Version is the version of the Kubernetes resource.
-	// If it is not specified, the resource with the semantically latest version is
-	// used to resolve the path.
-	// +optional
-	Version string `json:"version,omitempty"`
-
-	// Path represents the json path of the field under status.
-	// The path must point to a field with single value in the type of integer, bool or string.
-	// If the path points to a non-existing field, no value will be returned.
-	// If the path points to a structure, map or slice, no value will be returned and the status conddition
-	// of 'StatusSynced' will be set as false.
-	// Ref to https://kubernetes.io/docs/reference/kubectl/jsonpath/ on how to write a jsonPath.
-	// +kubebuilder:validation:Required
-	// +required
-	Path string `json:"path"`
 }
 
 // WorkStatus defines the observed state of Work
@@ -199,16 +118,16 @@ type SyncValue struct {
 	Name string `json:"name"`
 
 	// Value is the value of the status field.
-	// The value of the status field can only be integer, string or boolean.
+	// The value of the status field can only be integer, string, boolean or byte array.
 	// +kubebuilder:validation:Required
 	// +required
 	Value FieldValue `json:"fieldValue"`
 }
 
 // FieldValues represents the value of the field
-// The value of the status field can only be integer, string or boolean.
+// The value of the status field can only be integer, string, boolean or byte array.
 type FieldValue struct {
-	// Type represents the type of the value, it can be integer, string or boolean.
+	// Type represents the type of the value, it can be integer, string, boolean or byte array.
 	// +kubebuilder:validation:Required
 	// +required
 	Type ValueType `json:"type"`
@@ -224,6 +143,10 @@ type FieldValue struct {
 	// Boolean is bool value when type is boolean.
 	// +optional
 	Boolean *bool `json:"boolean,omitempty"`
+
+	// ByteArray is byte array value when type is byte array.
+	// +optional
+	ByteArray *[]byte `json:"byteArray,omitempty"`
 }
 
 // Type represents the type of the value, it can by integer, string or bool
@@ -231,9 +154,10 @@ type FieldValue struct {
 type ValueType string
 
 const (
-	Integer ValueType = "Integer"
-	String  ValueType = "String"
-	Boolean ValueType = "Boolean"
+	Integer   ValueType = "Integer"
+	String    ValueType = "String"
+	Boolean   ValueType = "Boolean"
+	ByteArray ValueType = "ByteArray"
 )
 
 // +genclient

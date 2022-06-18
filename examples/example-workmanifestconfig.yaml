@@ -1,0 +1,22 @@
+apiVersion: multicluster.x-k8s.io/v1alpha1
+kind: WorkManifestConfig
+metadata:
+  name: apps-v1-deployment # prefer naming scheme
+spec:
+  manifestGVK:
+    group: apps
+    version: v1
+    kind: Deployment
+  resourceStatusSync:
+    stopThreshold: 0
+    frequencySeconds: 60
+    rules:
+    - type: JSONPaths
+      jsonPaths:
+      - name: isAvailable
+        path: '.status.conditions[?(@.type=="Available")].status'
+    - type: Scripts
+      scripts:
+      - name: isReady
+        language: CEL
+        content: 'size(readyReplicas) > 0'

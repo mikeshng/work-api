@@ -57,79 +57,6 @@ spec:
                         type: object
                         x-kubernetes-preserve-unknown-fields: true
                         x-kubernetes-embedded-resource: true
-                workloadConfig:
-                  description: WorkloadConfig represents the configuration of workload defined in workload field.
-                  type: object
-                  properties:
-                    manifestConfigs:
-                      description: ManifestConfigs represents the configuration of manifest defined in workload field.
-                      type: array
-                      items:
-                        description: ManifestConfigOption represents the configuration of a manifest defined in workload field.
-                        type: object
-                        required:
-                          - resourceIdentifier
-                          - statusSyncRules
-                        properties:
-                          resourceIdentifier:
-                            description: ResourceIdentifier represents the group, resource, name and namespace of a resoure. If this references a resource not created by this work, then the related configurations will not be applied.
-                            type: object
-                            properties:
-                              group:
-                                description: Group is the group of the resource.
-                                type: string
-                              kind:
-                                description: Kind is the kind of the resource.
-                                type: string
-                              name:
-                                description: Name is the name of the resource
-                                type: string
-                              namespace:
-                                description: Namespace is the namespace of the resource, the resource is cluster scoped if the value is empty
-                                type: string
-                              ordinal:
-                                description: Ordinal represents an index in manifests list, so the condition can still be linked to a manifest even thougth manifest cannot be parsed successfully.
-                                type: integer
-                              resource:
-                                description: Resource is the resource type of the resource
-                                type: string
-                              version:
-                                description: Version is the version of the resource.
-                                type: string
-                          statusSyncRules:
-                            description: StatusSyncRules defines what resource status field should be returned.
-                            type: array
-                            items:
-                              description: StatusSyncRule represents a resource status field should be returned.
-                              type: object
-                              required:
-                                - type
-                              properties:
-                                jsonPaths:
-                                  description: JsonPaths defines the json path under status field to be synced.
-                                  type: array
-                                  items:
-                                    description: JsonPath represents a status field to be synced for a manifest using json path.
-                                    type: object
-                                    required:
-                                      - name
-                                      - path
-                                    properties:
-                                      name:
-                                        description: Name represents the alias name for this field
-                                        type: string
-                                      path:
-                                        description: Path represents the json path of the field under status. The path must point to a field with single value in the type of integer, bool or string. If the path points to a non-existing field, no value will be returned. If the path points to a structure, map or slice, no value will be returned and the status conddition of 'StatusSynced' will be set as false. Ref to https://kubernetes.io/docs/reference/kubectl/jsonpath/ on how to write a jsonPath.
-                                        type: string
-                                      version:
-                                        description: Version is the version of the Kubernetes resource. If it is not specified, the resource with the semantically latest version is used to resolve the path.
-                                        type: string
-                                type:
-                                  description: Type defines the option of how status can be returned. It can be JSONPaths or CommonFields. If the type is JSONPaths, user should specify the jsonPaths field If the type is CommonFields, certain common fields of status defined by a rule only for types in in k8s.io/api will be reported, If these status fields do not exist, no values will be reported.
-                                  type: string
-                                  enum:
-                                    - CommonFields
-                                    - JSONPaths
             status:
               description: status defines the status of each applied manifest on the spoke cluster.
               type: object
@@ -273,7 +200,7 @@ spec:
                                 - name
                               properties:
                                 fieldValue:
-                                  description: Value is the value of the status field. The value of the status field can only be integer, string or boolean.
+                                  description: Value is the value of the status field. The value of the status field can only be integer, string, boolean or byte array.
                                   type: object
                                   required:
                                     - type
@@ -281,6 +208,10 @@ spec:
                                     boolean:
                                       description: Boolean is bool value when type is boolean.
                                       type: boolean
+                                    byteArray:
+                                      description: ByteArray is byte array value when type is byte array.
+                                      type: string
+                                      format: byte
                                     integer:
                                       description: Integer is the integer value when type is integer.
                                       type: integer
@@ -289,7 +220,7 @@ spec:
                                       description: String is the string value when when type is string.
                                       type: string
                                     type:
-                                      description: Type represents the type of the value, it can be integer, string or boolean.
+                                      description: Type represents the type of the value, it can be integer, string, boolean or byte array.
                                       type: string
                                       enum:
                                         - Integer
